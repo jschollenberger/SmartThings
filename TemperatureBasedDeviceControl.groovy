@@ -31,8 +31,8 @@ preferences {
 	}
     
 	section("Temperature Configuation") {
-        input(name: "minTemp", type: "number", required: true, title: "Low Temperature (F*)")
-        input(name: "maxTemp", type: "number", required: true, title: "High Temperature (F*)")
+		input(name: "minTemp", type: "number", required: true, title: "Low Temperature (F*)")
+		input(name: "maxTemp", type: "number", required: true, title: "High Temperature (F*)")
 	}
     
 	section("Location") {
@@ -58,6 +58,8 @@ def updated() {
 }
 
 def initialize() {
+	subscribe(switches, "switch", switchesHandler)
+    
 	checkTemperature()
 
 	switch (pollRate) {
@@ -89,24 +91,24 @@ def checkTemperature() {
 	if(mechanism == "On") {
     	log.debug("Temperature Based Device Control: Using on at low temperatures")
 		if (currTemp < minTemp) {
-	    	log.debug("Temperature Based Device Control: currTemp $currTemp is less than min off temp $minTemp. Ensuring devices are on.")
-	    	deviceHandler("on")
+			log.debug("Temperature Based Device Control: currTemp $currTemp is less than min off temp $minTemp. Ensuring devices are on.")
+			deviceHandler("on")
 	    } else if (currTemp >= maxTemp) {
-	    	log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min on temp $maxTemp. Ensuring devices are off.")
-	    	deviceHandler("off")
+			log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min on temp $maxTemp. Ensuring devices are off.")
+			deviceHandler("off")
 	    } else {
-        	log.debug("Temperature Based Device Control: currTemp $currTemp is between setpoints $minTemp and $maxTemp. Doing nothing.")
+			log.debug("Temperature Based Device Control: currTemp $currTemp is between setpoints $minTemp and $maxTemp. Doing nothing.")
 		}
 	} else if(mechanism == "Off") {
     	log.debug("Temperature Based Device Control: Using off at low temperatures")
 		if (currTemp < minTemp) {
-	    	log.debug("Temperature Based Device Control: currTemp $currTemp is less than min off temp $minTemp. Ensuring devices are off.")
-	    	deviceHandler("off")
+			log.debug("Temperature Based Device Control: currTemp $currTemp is less than min off temp $minTemp. Ensuring devices are off.")
+			deviceHandler("off")
 	    } else if (currTemp >= maxTemp) {
-	    	log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min on temp $maxTemp. Ensuring devices are on.")
-	    	deviceHandler("on")
+			log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min on temp $maxTemp. Ensuring devices are on.")
+			deviceHandler("on")
 	    } else {
-        	log.debug("Temperature Based Device Control: currTemp $currTemp is between setpoints $minTemp and $maxTemp. Doing nothing.")
+			log.debug("Temperature Based Device Control: currTemp $currTemp is between setpoints $minTemp and $maxTemp. Doing nothing.")
 		}
 	}
 }
@@ -119,38 +121,46 @@ def getCurrTemp() {
 		log.debug("Temperature Based Device Control: using zip to update weather")
 		weatherData = getWeatherFeature("conditions", zipCode)
 	} else {
-       	log.debug("Temperature Based Device Control: using hub location to update weather")
+		log.debug("Temperature Based Device Control: using hub location to update weather")
 		weatherData = getWeatherFeature("conditions")
 	}
 	if (!weatherData) {
-        log.debug( "Temperature Based Device Control: Unable to retrieve weather data." )
-        return false
+		log.debug( "Temperature Based Device Control: Unable to retrieve weather data." )
+		return false
     } else {
 		currTemp = weatherData.current_observation.temp_f
 		log.debug( "Temperature Based Device Control: Current temperature is $currTemp*F")
-        return currTemp
+		return currTemp
 	}
 }
 
 
 def zipCodeIsValid() {
-	zipCode && zipCode.isNumber() && zipCode.size() >= 5
+	zipCode && zipCode.isNumber() && zipCode.size() == 5
 }
 
-def deviceHandler(String action) {
-//todo: detect devices that are already on or off and dont set them
-    log.debug "Temperature Based Device Control: Turning $action.value $switches"
+def switchesHandler(evt) {
+	log.debug "Temperature Based Device Control: ${evt.device} turned ${evt.value}"
+}
 
-//	for (thisSwitch in switches) {
-//	    if (thisSwitch.poll == action.value) {
-//	    	sendNotificationEvent("$thisSwitch} already {$evt}")
-//		} else if (thisSwitch.poll != action.value) {
-			if (action.value == "on") {
-        		switches?.on()
-            } else if (action.value == "off") {
-            	switches?.off()
-            }
-//        	sendNotificationEvent("I've turned $action.value ${switches}")
-//		}
-//	}
+
+def deviceHandler(action) {
+    log.debug "Temperature Based Device Control: Turning $action.value ${switches}"
+
+	if (action == "on") {
+		switches.each {
+			n->if (n.currentValue("switch")=="off") {
+				n.on()
+				log.debug "I've turned on $n"
+			}
+		}
+	} else if (action == "off") {
+		switches.each {
+			n->if (n.currentValue("switch")=="on") {
+				n.off()
+				log.debug "I've turned off $n"
+			}
+		}
+    }
+	//sendNotificationEvent("I've turned $action.value ${switches}")
 }
