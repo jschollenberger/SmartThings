@@ -89,21 +89,21 @@ def checkTemperature() {
 
 	if(mechanism == "On") {
 		log.debug("Temperature Based Device Control: Using on at low temperatures")
-		if (currTemp < minTemp) {
-			log.debug("Temperature Based Device Control: currTemp $currTemp is less than min off temp $minTemp. Ensuring devices are on.")
+		if (currTemp <= minTemp) {
+			log.debug("Temperature Based Device Control: currTemp $currTemp is less than min on temp $minTemp. Ensuring devices are on.")
 			deviceHandler("on")
-		} else if (currTemp >= maxTemp) {
-			log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min on temp $maxTemp. Ensuring devices are off.")
+		} else if (currTemp > maxTemp) {
+			log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min off temp $maxTemp. Ensuring devices are off.")
 			deviceHandler("off")
 		} else {
 			log.debug("Temperature Based Device Control: currTemp $currTemp is between setpoints $minTemp and $maxTemp. Doing nothing.")
 		}
 	} else if(mechanism == "Off") {
 		log.debug("Temperature Based Device Control: Using off at low temperatures")
-		if (currTemp < minTemp) {
+		if (currTemp <= minTemp) {
 			log.debug("Temperature Based Device Control: currTemp $currTemp is less than min off temp $minTemp. Ensuring devices are off.")
 			deviceHandler("off")
-		} else if (currTemp >= maxTemp) {
+		} else if (currTemp > maxTemp) {
 			log.debug("Temperature Based Device Control: currTemp $currTemp is greater than min on temp $maxTemp. Ensuring devices are on.")
 			deviceHandler("on")
 		} else {
@@ -144,20 +144,20 @@ def switchesHandler(evt) {
 
 
 def deviceHandler(action) {
-	log.debug "Temperature Based Device Control: Turning $action.value ${switches}"
+	log.debug "Temperature Based Device Control: Ensuring $action.value for ${switches}"
 
 	if (action == "on") {
 		switches.each {
 			n->if (n.currentValue("switch")=="off") {
 				n.on()
-				log.debug "I've turned on $n"
+				sendNotificationEvent("I've turned on the $n")
 			}
 		}
 	} else if (action == "off") {
 		switches.each {
 			n->if (n.currentValue("switch")=="on") {
 				n.off()
-				log.debug "I've turned off $n"
+				sendNotificationEvent("I've turned off the $n")
 			}
 		}
 	}
